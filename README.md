@@ -9,8 +9,7 @@ Clone or download the repository from github:
 ```
 git clone git@github.com:workpail/userkit-php
 ```
-Then copy or symlink the `userkit-php/userkit` sub-directory into
-your project.
+Then copy or symlink the `userkit-php/userkit` sub-directory into your project.
 
 ## Documentation
 
@@ -56,20 +55,20 @@ To run unit tests you need to create a test-app.
 
 You also need to install PHPUNIT.
 
-If you have the Composer package manager installed on your system there is a composer.json file in the `/php` folder which can be used to install PHPUNIT.
+If you have the Composer package manager installed on your system there is a composer.json file in main `/userkit-php` folder which can be used to install PHPUNIT.
 
 ```
-cd php
+cd userkit-php
 
 composer update
 ```
 
 Otherwise, click [PHPUnit Install](https://phpunit.de) to visit their website and install the unit test framework.
 
-Once you have PHPUNIT installed on your system, open a command window and change to the php/test folder.
+Once you have PHPUNIT installed on your system, open a command window and change to the userkit-php/test folder.
 
 ```
-cd php/test
+cd userkit-php/test
 ```
 
 Set the `USERKIT_KEY` environment variable to your test app key, followed by the PHPUNIT command with a dot for the current folder:
