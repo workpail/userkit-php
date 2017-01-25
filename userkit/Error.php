@@ -5,44 +5,54 @@ namespace UserKit;
 // Whenever the API returns an error of some kind, this CoreError class is thrown.
 // Be sure to catch this and handle things appropriately.
 class CoreError extends \Exception {
+    public $error_code = null;
     public $type = null;
-    public $code = null;
     public $param = null;
-    public $message = null;
     public $retry_wait = null;
 
-    public function __construct($json) {
-        $this->CoreError($json);
-    }
-
-    public function CoreError($json) {
-        $this->fromJSON($json);
-    }
-
-    public function toJSONString() {
-        return json_encode(get_object_vars($this));
-    }
-
-    public function fromJSON($json) {
+    ////
+    //  NOTE:  "code" and "message" are protected properties of the super class
+    ////
+    public function __construct($json)
+    {
+        // first we have to verify the array
         if(gettype($json) == "string") {
             $arr = json_decode($json, true);
         }
         else {
             $arr = $json;
         }
-        $arr = $arr['error'];
-        $this->code = $arr['code'];
-        $this->type = $arr['type'];
-        $this->message = $arr['message'];
-        $this->param = $arr['param'];
-        $this->retry_wait = $arr['retry_wait'];
+
+        // then call the super constructor
+        // we do not have a compatible "code" parameter
+        // so we just neg it out
+        parent::__construct($arr['error']['message'], -1);
+
+        // then set the properties of this class instance
+        $this->error_code = $arr['error']['code']; // mapped
+        $this->type = $arr['error']['type'];
+        $this->param = $arr['error']['param'];
+        $this->retry_wait = $arr['error']['retry_wait'];
     }
 
-    public function __toString() {
-        // return a human readable string of ALL the object properties
-        $obj = get_object_vars($this);
-        unset($obj['parentOb']);
-        return json_encode($obj);
+    public function toJSONString() {
+        return json_encode(get_object_vars($this));
+    }
+
+    public function __toString()
+    {
+        $rsVal = parent::__toString();
+
+        // since we have extended error info
+        // in our custom object we need to
+        // include it in the output string
+        $rsVal = $rsVal . "\nmessage = " . $this->message;
+        $rsVal = $rsVal . "\nerror_code = " . $this->error_code;
+        $rsVal = $rsVal . "\ntype = " . $this->type;
+        $rsVal = $rsVal . "\nparam = " . $this->param;
+        $rsVal = $rsVal . "\nretry_wait = " . $this->retry_wait;
+
+        return $rsVal;
     }
 }
 
@@ -52,39 +62,54 @@ class CoreError extends \Exception {
 class UserKitError extends CoreError
 {
     // Some endpoints return a list of multiple errors
-    public $errors = null;
+    public $errors = [];
 
-    public function __construct($json_body, $message = null)
+    public function __construct($json)
     {
-        parent::__construct($json_body);
-        $this->UserKitError($json_body, $message);
-    }
+        // make the base exception
+        parent::__construct($json);
 
-    public function UserKitError($json_body, $message = null)
-    {
-        $this->message = $message;
-        $this->fromJSON($json_body);
-    }
-
-    public function fromJSON($json)
-    {
+        // then verify the array
         if (gettype($json) == "string") {
             $arr = json_decode($json, true);
         } else {
             $arr = $json;
         }
 
-        // make a new array and add each individual error item
-        $this->errors = [];
+        // then check for an error list
         if ($arr['errors'] != null) {
-            for ($i = 0; $i < count($arr['errors']); $i++) {
-                $this->errors[$i] = new CoreError($arr['errors'][$i]);
-            }
+            // NOTE: we do NOT create 'sub error' objects
+            // because in PHP these are treated as 'exceptions'
+            // which one cannot just create an properly
+            // instantiated exception without THROWING it
+            // so we keep the extended list of errors
+            // as JSON for the consumer to decide if they
+            // wish to process each error type case.
+            $this->errors = $arr['errors'];
         }
     }
 
     public function __toString() {
-        return json_encode($this->errors);
+        // since we have extended error info
+        // in our custom object we need to
+        // include it in the output string
+        $rsVal = parent::__toString();
+        if ($this->errors) {
+            if (count($this->errors) > 1)
+            {
+                for ($i = 1; $i < count($this->errors); $i++) {
+                    $ob = $this->errors[$i];
+                    $rsVal = $rsVal . "\n\tError (" . $i . ")";
+                    $rsVal = $rsVal . "\n\tmessage = " . $ob['message'];
+                    $rsVal = $rsVal . "\n\terror_code = " . $ob['code'];
+                    $rsVal = $rsVal . "\n\ttype = " . $ob['type'];
+                    $rsVal = $rsVal . "\n\tparam = " . $ob['param'];
+                    $rsVal = $rsVal . "\n\tretry_wait = " . $ob['retry_wait'];
+                }
+            }
+         }
+
+        return $rsVal;
     }
 }
 
@@ -94,19 +119,19 @@ class AppAuthenticationError extends UserKitError {
 }
 
 class APIError extends UserKitError {
-	//
+    //
 }
 
 class APIConnectionError extends UserKitError {
-	//
+    //
 }
 
 class InvalidRequestError extends UserKitError {
-	//
+    //
 }
 
 class UserError extends UserKitError {
-	//
+    //
 }
 
 class UserAuthenticationError extends UserKitError {
